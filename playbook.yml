@@ -3,6 +3,8 @@
 
 - name: Work machine
   hosts: all
+  vars:
+    path_to_app: /var/www/yourdomain/app.js
   sudo: True
   tasks:
     - name: set locale
@@ -25,55 +27,34 @@
       file: dest=/var/www/yourdomain state=directory
 
     - name: copy app.js
-      copy: src=app.js dest=/var/www/yourdomain/
+      copy: src=app.js dest={{ path_to_app }}
 
     - name: copy yourdomain
       copy: src=yourdomain dest=/etc/nginx/sites-available/
 
+    - name: Ensure Nginx service is started
+      service: name=nginx state=started enabled=yes
 
-    #---
+    - name: Create symlink to yourdomain
+      file: src=/etc/nginx/sites-available/yourdomain dest=/etc/nginx/sites-enabled/yourdomain state=link
+      notify: reload nginx
 
-    #- name: Install Nginx
-    #  apt: name=nginx update_cache={{ update_apt_cache }} state=installed
-    #  tags: packages
+    - name: Ensure that the default site is disabled
+      file: path=/etc/nginx/sites-enabled/default state=absent
+      notify: reload nginx
 
-    ##- name: Copy the SSL certificate to the remote server
-    ##  copy: content="{{ ssl_crt }}" dest={{ ssl_dest_dir }}/{{ application_name }}.crt
-    ##  notify: restart nginx
+    - name: "Install forever (to run Node.js app)."
+      npm: name=forever global=yes state=latest
 
-    ##- name: Copy the SSL private key to the remote server
-    ##  copy: content="{{ ssl_key }}" dest={{ ssl_dest_dir }}/{{ application_name }}.key
-    ##  notify: restart nginx
+    - name: "Check list of Node.js apps running."
+      command: forever list
+      register: forever_list
+      changed_when: false
 
-    #- name: Create the Nginx configuration file
-    #  template: src=nginx_site_config.j2
-    #            dest=/etc/nginx/sites-available/{{ project_name }}
-    #            backup=yes
-    #  notify: reload nginx
+    - name: "Start example Node.js app."
+      command: forever start {{ path_to_app }}
+      when: "forever_list.stdout.find('{{path_to_app}}') == -1"
 
-    #- name: Ensure that the default site is disabled
-    #  command: rm /etc/nginx/sites-enabled/default
-    #           removes=/etc/nginx/sites-enabled/default
-    #  notify: reload nginx
-
-    #- name: Ensure that the application site is enabled
-    #  command: ln -s /etc/nginx/sites-available/{{ project_name }}
-    #           /etc/nginx/sites-enabled/{{ project_name }}
-    #           creates=/etc/nginx/sites-enabled/{{ project_name }}
-    #  notify: reload nginx
-
-    #- name: Ensure Nginx service is started
-    #  service: name=nginx state=started enabled=yes
-
-
-    #- name: "Install forever (to run Node.js app)."
-    #  npm: name=forever global=yes state=latest
-
-    #- name: "Check list of Node.js apps running."
-    #  command: forever list
-    #  register: forever_list
-    #  changed_when: false
-
-    #- name: "Start example Node.js app."
-    #  command: forever start /path/to/app.js
-    #  when: "forever_list.stdout.find('/path/to/app.js') == -1"
+  handlers:
+    - name: reload nginx
+      service: name=nginx state=reloaded
