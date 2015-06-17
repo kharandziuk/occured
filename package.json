@@ -11,5 +11,8 @@
   "license": "ISC",
   "files": [
     "app.js"
-  ]
+  ],
+  "bin": {
+    "application": "./app.js"
+  }
 }
