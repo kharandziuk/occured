@@ -23,25 +23,33 @@
     - name: install node and npm
       apt: name=nodejs update_cache=yes
 
+    - name: update npm
+      npm: name=npm global=true state=latest
+
     - name: create /var/www/yourdomain/ directory
       file: dest=/var/www/yourdomain state=directory
 
-    - name: copy app.js
-      copy: src=app.js dest={{ path_to_app }}
+    - name: install app
+      npm: name="https://github.com/kharandziuk/node-starter-deploy.git#silly-sample" global=true
+      tags:
+        - install
+
+    #- name: copy app.js
+    #  copy: src=app.js dest={{ path_to_app }}
 
     - name: copy yourdomain
       copy: src=yourdomain dest=/etc/nginx/sites-available/
 
-    - name: Ensure Nginx service is started
-      service: name=nginx state=started enabled=yes
-
     - name: Create symlink to yourdomain
-      file: src=/etc/nginx/sites-available/yourdomain dest=/etc/nginx/sites-enabled/yourdomain state=link
-      notify: reload nginx
+      file: src=/etc/nginx/sites-available/yourdomain dest=/etc/nginx/sites-enabled/example.com state=link
+      notify: nginx reload
 
     - name: Ensure that the default site is disabled
       file: path=/etc/nginx/sites-enabled/default state=absent
-      notify: reload nginx
+      notify: nginx reload
+
+    - name: Ensure Nginx service is started
+      service: name=nginx state=started enabled=yes
 
     - name: "Install forever (to run Node.js app)."
       npm: name=forever global=yes state=latest
@@ -56,5 +64,7 @@
       when: "forever_list.stdout.find('{{path_to_app}}') == -1"
 
   handlers:
-    - name: reload nginx
-      service: name=nginx state=reloaded
+    - name: nginx reload
+      service: name=nginx state=restarted
+
+
