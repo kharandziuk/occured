@@ -1,0 +1,70 @@
+# -*- mode: yaml-*-
+# vi: set ft=yaml sw=2 ts=2 :
+
+- name: Work machine
+  hosts: all
+  vars:
+    path_to_app: /var/www/yourdomain/app.js
+  sudo: True
+  tasks:
+    - name: set locale
+      lineinfile: dest=/etc/default/locale line="LC_ALL=C"
+
+    - name: install packages
+      apt: name={{ item }} update_cache=yes
+      with_items:
+        - git
+        - curl
+        - nginx
+
+    - name: add ppa with node
+      shell: curl -sL https://deb.nodesource.com/setup | bash -
+
+    - name: install node and npm
+      apt: name=nodejs update_cache=yes
+
+    - name: update npm
+      npm: name=npm global=true state=latest
+
+    - name: create /var/www/yourdomain/ directory
+      file: dest=/var/www/yourdomain state=directory
+
+    - name: install app
+      npm: name="https://github.com/kharandziuk/node-starter-deploy.git#silly-sample" global=true
+      tags:
+        - install
+
+    #- name: copy app.js
+    #  copy: src=app.js dest={{ path_to_app }}
+
+    - name: copy yourdomain
+      copy: src=yourdomain dest=/etc/nginx/sites-available/
+
+    - name: Create symlink to yourdomain
+      file: src=/etc/nginx/sites-available/yourdomain dest=/etc/nginx/sites-enabled/example.com state=link
+      notify: nginx reload
+
+    - name: Ensure that the default site is disabled
+      file: path=/etc/nginx/sites-enabled/default state=absent
+      notify: nginx reload
+
+    - name: Ensure Nginx service is started
+      service: name=nginx state=started enabled=yes
+
+    - name: "Install forever (to run Node.js app)."
+      npm: name=forever global=yes state=latest
+
+    - name: "Check list of Node.js apps running."
+      command: forever list
+      register: forever_list
+      changed_when: false
+
+    - name: "Start example Node.js app."
+      command: forever start {{ path_to_app }}
+      when: "forever_list.stdout.find('{{path_to_app}}') == -1"
+
+  handlers:
+    - name: nginx reload
+      service: name=nginx state=restarted
+
+
