@@ -1,5 +1,5 @@
 # the IP(s) on which your node server is running. I chose port 3000.
-upstream yourdomain {
+upstream occured {
     server 127.0.0.1:3000;
     keepalive 8;
 }
@@ -9,7 +9,7 @@ server {
     listen 0.0.0.0:80;
 
 
-    server_name yourdomain.com yourdomain;
+    server_name occured.com occured;
     access_log /var/log/nginx/yourdomain.log;
 
     # pass the request to the node.js server with the correct headers
@@ -20,7 +20,7 @@ server {
       proxy_set_header Host $http_host;
       proxy_set_header X-NginX-Proxy true;
 
-      proxy_pass http://yourdomain/;
+      proxy_pass http://occured/;
       proxy_redirect off;
     }
 }
