@@ -4,7 +4,9 @@
 - name: Work machine
   hosts: all
   vars:
-    path_to_app: /var/www/yourdomain/app.js
+    project_name: occured.org
+    project_install_dir: /var/www/{{project_name}}
+    path_to_app: {{ project_install_dir }}/node_modules/app.js
   sudo: True
   tasks:
     - name: set locale
@@ -26,22 +28,22 @@
     - name: update npm
       npm: name=npm global=true state=latest
 
-    - name: create /var/www/yourdomain/ directory
-      file: dest=/var/www/yourdomain state=directory
+    - name: create project directory
+      file: dest=/var/www/{{ project_name }} state=directory
 
     - name: install app
-      npm: name="https://github.com/kharandziuk/node-starter-deploy.git#silly-sample" global=true
+      npm: name="https://github.com/kharandziuk/occured.org/" path
       tags:
         - install
 
     #- name: copy app.js
     #  copy: src=app.js dest={{ path_to_app }}
 
-    - name: copy yourdomain
-      copy: src=yourdomain dest=/etc/nginx/sites-available/
+    - name: copy nginx conf
+      copy: src=occured.org dest=/etc/nginx/sites-available/
 
-    - name: Create symlink to yourdomain
-      file: src=/etc/nginx/sites-available/yourdomain dest=/etc/nginx/sites-enabled/example.com state=link
+    - name: Create symlink
+      file: src=/etc/nginx/sites-available/{{ nginx_conf_name }} dest=/etc/nginx/sites-enabled/{{ nginx_conf_name }} state=link
       notify: nginx reload
 
     - name: Ensure that the default site is disabled
@@ -66,5 +68,3 @@
   handlers:
     - name: nginx reload
       service: name=nginx state=restarted
-
-
